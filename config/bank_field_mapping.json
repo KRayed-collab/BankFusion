@@ -1,0 +1,67 @@
+{
+  "BANK_A": {
+    "source_id_field": "transaction_id",
+    "timestamp_field": "transaction_timestamp",
+    "sender_field": "sender_account_ref",
+    "receiver_field": "receiver_account_ref",
+    "receiver_bank_field": "receiver_bank_code",
+    "amount_field": "amount_paise",
+    "method_field": "payment_mode",
+    "status_field": "transaction_status",
+    "device_field": "device_token",
+    "status_mapping": {
+      "SUCCESS": "SUCCESS",
+      "FAILED": "FAILED",
+      "PENDING": "PENDING"
+    },
+    "method_mapping": {
+      "UPI": "UPI",
+      "IMPS": "IMPS",
+      "NEFT": "NEFT",
+      "RTGS": "RTGS",
+      "CARD": "CARD"
+    }
+  },
+  "BANK_B": {
+    "source_id_field": "event_id",
+    "timestamp_field": "event_timestamp",
+    "sender_field": "sender_wallet_ref",
+    "receiver_field": "beneficiary_account_ref",
+    "receiver_bank_field": "beneficiary_bank_code",
+    "amount_field": "value_paise",
+    "method_field": "channel_code",
+    "status_field": "result_code",
+    "device_field": "device_token",
+    "status_mapping": {
+      "RC_00_SUCCESS": "SUCCESS",
+      "RC_05_FAILED": "FAILED",
+      "RC_99_PENDING": "PENDING"
+    },
+    "method_mapping": {
+      "WALLET_TRANSFER": "WALLET",
+      "QR_SCAN": "UPI",
+      "UPI_DIRECT": "UPI"
+    }
+  },
+  "BANK_C": {
+    "source_id_field": "journal_id",
+    "timestamp_field": "posting_timestamp",
+    "sender_field": "debit_ledger_account_ref",
+    "receiver_field": "credit_ledger_account_ref",
+    "receiver_bank_field": "counterparty_bank_code",
+    "amount_field": "amount_paise",
+    "method_field": "transfer_type",
+    "status_field": "entry_status",
+    "device_field": "device_token",
+    "status_mapping": {
+      "POSTED": "SUCCESS",
+      "UNPOSTED": "PENDING",
+      "REJECTED": "FAILED"
+    },
+    "method_mapping": {
+      "BOOK_TRANSFER": "BOOK_TRANSFER",
+      "INTERNAL_LEDGER_TRANSFER": "BOOK_TRANSFER"
+    }
+  }
+}
+

@@ -1,0 +1,28 @@
+{
+  "rule_1_velocity": {
+    "window_seconds": 300,
+    "min_attempts": 4,
+    "description": "Four or more payment attempts by the same source account within a rolling 5-minute window"
+  },
+  "rule_2_shared_device": {
+    "window_seconds": 86400,
+    "min_distinct_accounts": 3,
+    "description": "Three or more distinct sending accounts associated with the same synthetic device token within a rolling 24-hour window"
+  },
+  "rule_3_large_amount": {
+    "historical_period_days": 30,
+    "min_historical_txns": 5,
+    "historical_multiplier": 3.0,
+    "baseline_floor_paise": 5000000,
+    "fallback_threshold_paise": 10000000,
+    "description": "Transaction amount significantly exceeding account historical baseline (>= 3x median and >= Rs. 50,000) or fallback threshold (>= Rs. 1,00,000) for new accounts"
+  },
+  "rule_4_cross_bank_movement": {
+    "window_seconds": 600,
+    "min_retention_ratio": 0.80,
+    "max_retention_ratio": 1.00,
+    "min_distinct_accounts": 3,
+    "min_distinct_banks": 2,
+    "description": "Rapid multi-hop cross-bank transfer chain retaining >= 80% of funds across distinct accounts and banks within 10 minutes"
+  }
+}

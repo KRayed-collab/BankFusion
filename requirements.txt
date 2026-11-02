@@ -1,0 +1,9 @@
+# BankFusion: Multi-Bank Data Warehouse & Fraud Analytics Platform
+# Native Windows Desktop Architecture (PySide6 / Qt 6)
+
+PySide6-Essentials>=6.5.0
+sqlalchemy>=2.0.0
+pandas>=2.0.0
+pytest>=7.4.0
+python-dotenv>=1.0.0
+pyinstaller>=6.0.0

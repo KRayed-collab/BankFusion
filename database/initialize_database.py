@@ -21,6 +21,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from sqlalchemy.orm import Session
 from database.database_connection import engine, SessionLocal, Base
+from database.migrations import run_database_migrations, get_active_sqlite_db_path
 from database.database_models import (
     DimBank,
     DimPaymentMethod,
@@ -108,6 +109,7 @@ def initialize_database(reset: bool = False) -> None:
 
     print("[INIT] Creating tables according to database models...")
     Base.metadata.create_all(bind=engine)
+    run_database_migrations(get_active_sqlite_db_path())
 
     session = SessionLocal()
     try:

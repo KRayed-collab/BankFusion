@@ -78,6 +78,7 @@ def detect_velocity_bursts(
 
         acc_ref = sorted_group["source_account_ref"].iloc[0]
         bank_code = sorted_group["bank_code"].iloc[0]
+        warned = False
 
         # Slide rolling window [t_i, t_i + window_seconds]
         for i in range(n):
@@ -95,28 +96,28 @@ def detect_velocity_bursts(
                 window_keys = set(window_slice["transaction_key"])
                 flagged_keys.update(window_keys)
 
-                trigger_txn = window_slice.iloc[-1]
-                evidence = (
-                    f"Account {acc_ref} ({bank_code}) initiated {len(window_slice)} payment attempts "
-                    f"within {window_slice.iloc[-1]['epoch_timestamp'] - start_epoch} seconds "
-                    f"(Threshold: >={min_attempts} in {window_seconds}s). "
-                    f"Included { (window_slice['transaction_status'] == 'FAILED').sum() } failed attempts."
-                )
+                if not warned:
+                    trigger_txn = window_slice.iloc[-1]
+                    evidence = (
+                        f"Account {acc_ref} ({bank_code}) initiated {len(window_slice)} payment attempts "
+                        f"within {window_slice.iloc[-1]['epoch_timestamp'] - start_epoch} seconds "
+                        f"(Threshold: >={min_attempts} in {window_seconds}s). "
+                        f"Included { (window_slice['transaction_status'] == 'FAILED').sum() } failed attempts."
+                    )
 
-                warnings.append({
-                    "rule_name": "VELOCITY_BURST",
-                    "review_priority": "REVIEW_RECOMMENDED",
-                    "entity_type": "ACCOUNT",
-                    "entity_ref": f"{bank_code}:{acc_ref}",
-                    "trigger_timestamp": trigger_txn["transaction_timestamp"],
-                    "window_start": window_slice.iloc[0]["transaction_timestamp"],
-                    "window_end": trigger_txn["transaction_timestamp"],
-                    "threshold_value": min_attempts,
-                    "observed_value": len(window_slice),
-                    "evidence_summary": evidence,
-                })
-                # Break to next account to avoid redundant overlapping warning entries for same burst
-                break
+                    warnings.append({
+                        "rule_name": "VELOCITY_BURST",
+                        "review_priority": "REVIEW_RECOMMENDED",
+                        "entity_type": "ACCOUNT",
+                        "entity_ref": f"{bank_code}:{acc_ref}",
+                        "trigger_timestamp": trigger_txn["transaction_timestamp"],
+                        "window_start": window_slice.iloc[0]["transaction_timestamp"],
+                        "window_end": trigger_txn["transaction_timestamp"],
+                        "threshold_value": min_attempts,
+                        "observed_value": len(window_slice),
+                        "evidence_summary": evidence,
+                    })
+                    warned = True
 
     return warnings, flagged_keys
 

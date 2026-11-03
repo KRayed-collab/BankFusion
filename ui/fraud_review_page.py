@@ -2,8 +2,13 @@
 BankFusion Desktop Page 1: Fraud Review Queue
 =============================================
 Operational triage queue for bank fraud investigators.
-Features real-time summary cards, tabbed alert filtering, detailed alert cards,
-empty-state handling, and instant SQLite decision persistence.
+Features:
+- Enterprise light styling with clean white panels and clear typography
+- Real-time summary KPI cards (Awaiting Review, Escalated Investigation, Resolved Alerts)
+- Tabbed alert filtering (Needs Review, All Alerts, Resolved)
+- High-density alert cards with expandable evidence and deterministic rule factors
+- Empty-state guidance with one-click warehouse screening trigger
+- Instant SQLite decision persistence and synchronized enforcement records
 """
 
 from PySide6.QtWidgets import (
@@ -17,9 +22,10 @@ from fraud_detection import review_actions
 from ui.summary_cards import SummaryCardsPanel
 from ui.alert_card import AlertCard
 from ui.alert_details_dialog import AlertDetailsDialog
+from ui.evaluation_dialog import EvaluationDialog
 from ui.theme import (
-    COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED,
-    COLOR_BORDER, COLOR_PANEL_BG, COLOR_BLUE
+    COLOR_BG, COLOR_CARD_BG, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
+    COLOR_TEXT_MUTED, COLOR_BORDER, COLOR_ACCENT, COLOR_CLEAR
 )
 from workers.detection_worker import DetectionWorker
 
@@ -41,29 +47,35 @@ class FraudReviewPage(QWidget):
 
     def _build_ui(self):
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(28, 24, 28, 24)
-        main_layout.setSpacing(18)
+        main_layout.setContentsMargins(24, 20, 24, 20)
+        main_layout.setSpacing(16)
 
         # 1. Header Toolbar
         hdr_layout = QHBoxLayout()
         title_box = QVBoxLayout()
         title_box.setSpacing(2)
 
-        title_lbl = QLabel("🛡️ Fraud Review Queue")
-        title_lbl.setStyleSheet(f"font-size: 22px; font-weight: 800; color: {COLOR_TEXT_PRIMARY};")
+        title_lbl = QLabel("Fraud Review Queue")
+        title_lbl.setStyleSheet(f"font-size: 20px; font-weight: 800; color: {COLOR_TEXT_PRIMARY};")
         subtitle_lbl = QLabel("Operational Multi-Bank Risk Surveillance & Triage Station")
-        subtitle_lbl.setStyleSheet(f"font-size: 12px; color: {COLOR_TEXT_MUTED};")
+        subtitle_lbl.setStyleSheet(f"font-size: 12px; color: {COLOR_TEXT_SECONDARY};")
 
         title_box.addWidget(title_lbl)
         title_box.addWidget(subtitle_lbl)
 
         self.btn_run_detection = QPushButton("⚡ Run Fraud Screening")
         self.btn_run_detection.setObjectName("primaryButton")
-        self.btn_run_detection.setMinimumHeight(38)
+        self.btn_run_detection.setMinimumHeight(36)
         self.btn_run_detection.clicked.connect(self.trigger_fraud_detection)
+
+        self.btn_view_eval = QPushButton("📊 Evaluation Metrics")
+        self.btn_view_eval.setObjectName("secondaryButton")
+        self.btn_view_eval.setMinimumHeight(36)
+        self.btn_view_eval.clicked.connect(self._open_evaluation_dialog)
 
         hdr_layout.addLayout(title_box)
         hdr_layout.addStretch()
+        hdr_layout.addWidget(self.btn_view_eval)
         hdr_layout.addWidget(self.btn_run_detection)
         main_layout.addLayout(hdr_layout)
 
@@ -73,26 +85,26 @@ class FraudReviewPage(QWidget):
 
         # 3. Tab Navigation for Queue Views
         self.tab_widget = QTabWidget()
-        self.tab_widget.addTab(QWidget(), "🚨 Needs Review")
-        self.tab_widget.addTab(QWidget(), "📋 All Alerts")
-        self.tab_widget.addTab(QWidget(), "✅ Resolved")
+        self.tab_widget.addTab(QWidget(), "Needs Review")
+        self.tab_widget.addTab(QWidget(), "All Alerts")
+        self.tab_widget.addTab(QWidget(), "Resolved")
         self.tab_widget.currentChanged.connect(self._on_tab_changed)
         main_layout.addWidget(self.tab_widget)
 
         # 4. Scroll Area for Alert Cards
         self.scroll_area = QScrollArea()
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setStyleSheet(f"""
-            QScrollArea {{
+        self.scroll_area.setStyleSheet("""
+            QScrollArea {
                 background-color: transparent;
                 border: none;
-            }}
+            }
         """)
 
         self.cards_container = QWidget()
         self.cards_layout = QVBoxLayout(self.cards_container)
         self.cards_layout.setContentsMargins(0, 0, 0, 0)
-        self.cards_layout.setSpacing(12)
+        self.cards_layout.setSpacing(10)
         self.cards_layout.addStretch()
         self.is_dirty = False
         self.has_loaded = True
@@ -117,16 +129,17 @@ class FraudReviewPage(QWidget):
         # 1. Update Top Summary Cards
         with SessionLocal() as session:
             metrics = review_actions.get_review_queue_summary_metrics(session)
-            alerts = review_actions.get_alerts_for_queue(session, status_filter=self.current_filter)
+            alerts = review_actions.get_alerts_for_queue(session, status_filter=self.current_filter, limit=50)
 
         self.summary_panel.update_metrics(
-            awaiting=metrics["awaiting_review"],
-            escalated=metrics["escalated"],
-            restricted=metrics["accounts_restricted"],
+            awaiting=metrics.get("awaiting_review", 0),
+            escalated=metrics.get("escalated", 0),
+            resolved=metrics.get("resolved", 0),
+            restricted=metrics.get("accounts_restricted", 0),
         )
 
         # Update tab label with live count
-        self.tab_widget.setTabText(0, f"🚨 Needs Review ({metrics['awaiting_review']})")
+        self.tab_widget.setTabText(0, f"Needs Review ({metrics.get('awaiting_review', 0)})")
 
         # 2. Clear Previous Cards
         while self.cards_layout.count() > 0:
@@ -187,41 +200,39 @@ class FraudReviewPage(QWidget):
         self.has_loaded = True
 
     def _create_empty_state_widget(self) -> QWidget:
-        """Creates the required informative empty state widget."""
+        """Creates clean enterprise empty state widget."""
         box = QFrame()
         box.setStyleSheet(f"""
             QFrame {{
-                background-color: {COLOR_PANEL_BG};
+                background-color: {COLOR_CARD_BG};
                 border: 1px dashed {COLOR_BORDER};
-                border-radius: 8px;
-                padding: 40px;
+                border-radius: 6px;
+                padding: 36px;
             }}
         """)
         layout = QVBoxLayout(box)
         layout.setAlignment(Qt.AlignCenter)
-        layout.setSpacing(12)
+        layout.setSpacing(10)
 
-        icon_lbl = QLabel("✅")
-        icon_lbl.setStyleSheet("font-size: 36px; background: transparent;")
-        icon_lbl.setAlignment(Qt.AlignCenter)
-
-        msg_lbl = QLabel("No suspicious transactions currently require review.")
-        msg_lbl.setStyleSheet(f"font-size: 16px; font-weight: 700; color: {COLOR_TEXT_PRIMARY}; background: transparent;")
+        msg_lbl = QLabel("No suspicious transactions currently require triage.")
+        msg_lbl.setStyleSheet(f"font-size: 15px; font-weight: 700; color: {COLOR_TEXT_PRIMARY}; background: transparent;")
         msg_lbl.setAlignment(Qt.AlignCenter)
 
-        desc_lbl = QLabel("All evaluated transactions have either cleared detection rules or have been resolved.\nClick below to screen newly arrived transactions against all 4 deterministic rules:")
-        desc_lbl.setStyleSheet(f"font-size: 12px; color: {COLOR_TEXT_MUTED}; background: transparent;")
+        desc_lbl = QLabel(
+            "All evaluated transactions have either cleared detection rules or have been resolved by compliance officers.\n"
+            "Screen newly arrived transactions against all 4 deterministic risk rules:"
+        )
+        desc_lbl.setStyleSheet(f"font-size: 12px; color: {COLOR_TEXT_SECONDARY}; line-height: 1.4; background: transparent;")
         desc_lbl.setAlignment(Qt.AlignCenter)
 
-        btn_screen = QPushButton("▶️ Run Fraud Detection on Warehouse Transactions")
+        btn_screen = QPushButton("⚡ Screen Warehouse Transactions")
         btn_screen.setObjectName("primaryButton")
         btn_screen.setMinimumHeight(36)
         btn_screen.clicked.connect(self.trigger_fraud_detection)
 
-        layout.addWidget(icon_lbl)
         layout.addWidget(msg_lbl)
         layout.addWidget(desc_lbl)
-        layout.addWidget(btn_screen)
+        layout.addWidget(btn_screen, alignment=Qt.AlignCenter)
         return box
 
     @Slot(str, str, str, str)
@@ -307,3 +318,6 @@ class FraudReviewPage(QWidget):
         self.btn_run_detection.setText("⚡ Run Fraud Screening")
         QMessageBox.critical(self, "Detection Failed", f"Screening error:\n{err_msg}")
 
+    def _open_evaluation_dialog(self):
+        dlg = EvaluationDialog(self)
+        dlg.exec()

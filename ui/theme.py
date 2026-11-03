@@ -1,285 +1,356 @@
 """
 BankFusion Desktop Application Theme & Styling
 ==============================================
-Dark charcoal banking-security theme inspired by modern SIEM and fraud triage dashboards.
-Pure Qt stylesheets (QSS) for native PySide6 widgets.
+Professional Enterprise Light Theme for Financial Banking Operations & Fraud Investigation.
+Features:
+- Clean light workspace (#F3F5F7) and single-level white cards (#FFFFFF)
+- High-contrast dark slate sidebar (#202C38) with muted teal active indicators (#176B66)
+- Strict adherence to preserved fraud status colours:
+  * CLEAR / NON-FRAUD: #268653 on #E6F4EA
+  * REVIEW_PENDING: #D69E27 on #FFF3D6
+  * AUTO_BLOCKED / MANUALLY_BLOCKED: #C43D3D on #FCE8E8
+  * RELEASED: #2B6CB0 on #EBF8FF
+- High data-density tabular layouts with user-resizable headers
 """
 
 # Palette Constants
-COLOR_BG_DARK = "#0b0f19"         # Deep charcoal canvas
-COLOR_PANEL_BG = "#131b2e"        # Panel and card background
-COLOR_PANEL_ALT = "#1a243b"       # Alternate row / card hover
-COLOR_BORDER = "#232f48"          # Subtle structural borders
-COLOR_BORDER_LIGHT = "#334155"    # Highlight borders
+COLOR_BG = "#F3F5F7"               # Clean workspace light canvas
+COLOR_BG_DARK = COLOR_BG           # Backward compatibility alias
+COLOR_CARD_BG = "#FFFFFF"          # Single-level white card container
+COLOR_PANEL_BG = "#FFFFFF"         # Main panels
+COLOR_PANEL_ALT = "#F8FAFC"        # Sub-panels / table alternating rows
 
-COLOR_TEXT_PRIMARY = "#f8fafc"    # High-contrast white
-COLOR_TEXT_SECONDARY = "#94a3b8"  # Slate secondary text
-COLOR_TEXT_MUTED = "#64748b"      # Muted labels
+COLOR_SIDEBAR_BG = "#202C38"       # Deep slate enterprise sidebar
+COLOR_SIDEBAR_TEXT = "#94A3B8"     # Inactive sidebar navigation text
+COLOR_SIDEBAR_ACTIVE = "#176B66"   # Muted teal active navigation indicator
+COLOR_SIDEBAR_ACTIVE_TEXT = "#FFFFFF"
 
-COLOR_RED = "#ef4444"             # Suspicious / high risk
-COLOR_RED_BG = "#3f141b"          # Red badge / row background
-COLOR_RED_BORDER = "#7f1d1d"
+COLOR_TEXT_PRIMARY = "#202B36"     # High readability dark charcoal
+COLOR_TEXT_SECONDARY = "#64748B"   # Cool grey secondary labels & hints
+COLOR_TEXT_MUTED = "#94A3B8"       # Subtle tertiary text
 
-COLOR_GREEN = "#10b981"           # Clean / legitimate / normal
-COLOR_GREEN_BG = "#0c2d23"        # Green badge / row background
-COLOR_GREEN_BORDER = "#065f46"
+COLOR_BORDER = "#D9E0E7"           # Standard 1px neutral borders
+COLOR_BORDER_LIGHT = "#E2E8F0"     # Divider lines
+COLOR_BORDER_DARK = "#CBD5E1"      # Interactive borders
 
-COLOR_AMBER = "#f59e0b"           # Awaiting review / medium risk
-COLOR_AMBER_BG = "#38230b"        # Amber badge / row background
-COLOR_AMBER_BORDER = "#78350f"
+COLOR_ACCENT = "#176B66"           # Muted teal primary accent
+COLOR_ACCENT_HOVER = "#135652"     # Darker teal hover
+COLOR_ACCENT_LIGHT = "#E6F0EF"     # Very soft teal tint for selection
 
-COLOR_BLUE = "#3b82f6"            # Interactive cyan/blue
-COLOR_BLUE_HOVER = "#2563eb"
-COLOR_BLUE_BG = "#13233f"
-COLOR_BLUE_BORDER = "#1d4ed8"
+# Preserved Fraud Status Colours (MANDATORY)
+COLOR_CLEAR = "#268653"            # CLEAR / NON-FRAUD dark green text
+COLOR_CLEAR_BG = "#E6F4EA"         # Light green badge background
+COLOR_CLEAR_BORDER = "#A3D9B8"
 
-DARK_THEME_QSS = f"""
+COLOR_REVIEW = "#D69E27"           # REVIEW_PENDING amber/yellow text
+COLOR_REVIEW_BG = "#FFF3D6"        # Light amber badge background
+COLOR_REVIEW_BORDER = "#F5D585"
+
+COLOR_BLOCKED = "#C43D3D"          # AUTO_BLOCKED / MANUALLY_BLOCKED red text
+COLOR_BLOCKED_BG = "#FCE8E8"       # Light red badge background
+COLOR_BLOCKED_BORDER = "#F4AAAA"
+
+COLOR_RELEASED = "#2B6CB0"         # RELEASED muted blue-grey text
+COLOR_RELEASED_BG = "#EBF8FF"      # Light blue-grey badge background
+COLOR_RELEASED_BORDER = "#BEE3F8"
+
+# Compatibility Aliases for Existing Pages & Workers
+COLOR_GREEN = COLOR_CLEAR
+COLOR_GREEN_BG = COLOR_CLEAR_BG
+COLOR_GREEN_BORDER = COLOR_CLEAR_BORDER
+
+COLOR_AMBER = COLOR_REVIEW
+COLOR_AMBER_BG = COLOR_REVIEW_BG
+COLOR_AMBER_BORDER = COLOR_REVIEW_BORDER
+
+COLOR_RED = COLOR_BLOCKED
+COLOR_RED_BG = COLOR_BLOCKED_BG
+COLOR_RED_BORDER = COLOR_BLOCKED_BORDER
+
+COLOR_BLUE = COLOR_RELEASED
+COLOR_BLUE_BG = COLOR_RELEASED_BG
+COLOR_BLUE_BORDER = COLOR_RELEASED_BORDER
+COLOR_BLUE_HOVER = "#1A4971"
+
+# Enterprise Light Theme QSS
+ENTERPRISE_LIGHT_THEME_QSS = f"""
 QMainWindow {{
-    background-color: {COLOR_BG_DARK};
+    background-color: {COLOR_BG};
     color: {COLOR_TEXT_PRIMARY};
 }}
 
 QWidget {{
-    background-color: {COLOR_BG_DARK};
+    background-color: {COLOR_BG};
     color: {COLOR_TEXT_PRIMARY};
-    font-family: "Segoe UI", "Inter", -apple-system, sans-serif;
+    font-family: "Segoe UI", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 13px;
 }}
 
 /* Scrollbars */
 QScrollBar:vertical {{
-    background: {COLOR_BG_DARK};
-    width: 10px;
+    background: transparent;
+    width: 8px;
     margin: 0px;
-    border-radius: 5px;
+    border-radius: 4px;
 }}
 QScrollBar::handle:vertical {{
-    background: {COLOR_BORDER_LIGHT};
+    background: {COLOR_BORDER_DARK};
     min-height: 24px;
-    border-radius: 5px;
+    border-radius: 4px;
 }}
 QScrollBar::handle:vertical:hover {{
-    background: {COLOR_BLUE};
+    background: {COLOR_TEXT_SECONDARY};
 }}
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
     height: 0px;
 }}
 QScrollBar:horizontal {{
-    background: {COLOR_BG_DARK};
-    height: 10px;
+    background: transparent;
+    height: 8px;
     margin: 0px;
-    border-radius: 5px;
+    border-radius: 4px;
 }}
 QScrollBar::handle:horizontal {{
-    background: {COLOR_BORDER_LIGHT};
+    background: {COLOR_BORDER_DARK};
     min-width: 24px;
-    border-radius: 5px;
+    border-radius: 4px;
+}}
+QScrollBar::handle:horizontal:hover {{
+    background: {COLOR_TEXT_SECONDARY};
 }}
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
     width: 0px;
 }}
 
-/* Frames & Panels */
+/* Sidebar Panel */
 QFrame#sidebarPanel {{
-    background-color: #0d1424;
-    border-right: 1px solid {COLOR_BORDER};
+    background-color: {COLOR_SIDEBAR_BG};
+    border-right: 1px solid #1E2833;
 }}
-QFrame#summaryCard {{
-    background-color: {COLOR_PANEL_BG};
+
+/* Cards & KPI Panels */
+QFrame#summaryCard, QFrame#kpiCard {{
+    background-color: {COLOR_CARD_BG};
     border: 1px solid {COLOR_BORDER};
-    border-radius: 8px;
+    border-radius: 6px;
     padding: 12px;
 }}
+
 QFrame#alertCard {{
-    background-color: {COLOR_PANEL_BG};
+    background-color: {COLOR_CARD_BG};
     border: 1px solid {COLOR_BORDER};
-    border-radius: 8px;
+    border-radius: 6px;
 }}
 QFrame#alertCard:hover {{
-    border-color: {COLOR_BORDER_LIGHT};
-    background-color: {COLOR_PANEL_ALT};
+    border-color: {COLOR_BORDER_DARK};
+    background-color: #FAFCFE;
 }}
+
 QFrame#filterPanel {{
-    background-color: {COLOR_PANEL_BG};
+    background-color: {COLOR_CARD_BG};
     border: 1px solid {COLOR_BORDER};
-    border-radius: 8px;
-    padding: 8px;
+    border-radius: 6px;
+    padding: 8px 12px;
 }}
 
 /* Buttons */
 QPushButton {{
-    background-color: #1e293b;
+    background-color: #FFFFFF;
     color: {COLOR_TEXT_PRIMARY};
-    border: 1px solid {COLOR_BORDER_LIGHT};
+    border: 1px solid {COLOR_BORDER};
     border-radius: 6px;
-    padding: 7px 16px;
+    padding: 6px 14px;
     font-weight: 600;
+    font-size: 12px;
 }}
 QPushButton:hover {{
-    background-color: #334155;
-    border-color: #475569;
+    background-color: #F8FAFC;
+    border-color: {COLOR_BORDER_DARK};
 }}
 QPushButton:pressed {{
-    background-color: #0f172a;
+    background-color: #EEF2F6;
 }}
 QPushButton:disabled {{
-    background-color: #1a202c;
-    color: #475569;
-    border-color: #2d3748;
+    background-color: #F1F5F9;
+    color: {COLOR_TEXT_MUTED};
+    border-color: {COLOR_BORDER};
 }}
 
-/* Primary Blue Action Button */
+/* Primary Muted Teal Action Button */
 QPushButton#primaryButton {{
-    background-color: {COLOR_BLUE};
-    border-color: {COLOR_BLUE_BORDER};
-    color: #ffffff;
+    background-color: {COLOR_ACCENT};
+    border: 1px solid {COLOR_ACCENT_HOVER};
+    color: #FFFFFF;
 }}
 QPushButton#primaryButton:hover {{
-    background-color: {COLOR_BLUE_HOVER};
+    background-color: {COLOR_ACCENT_HOVER};
+    border-color: #0E4340;
+}}
+QPushButton#primaryButton:pressed {{
+    background-color: #0E4340;
 }}
 
-/* Success Button */
+/* Secondary Neutral Outline Button */
+QPushButton#secondaryButton {{
+    background-color: #FFFFFF;
+    border: 1px solid {COLOR_BORDER};
+    color: {COLOR_TEXT_PRIMARY};
+}}
+QPushButton#secondaryButton:hover {{
+    background-color: #F8FAFC;
+    border-color: {COLOR_BORDER_DARK};
+}}
+
+/* Semantic Action Buttons */
 QPushButton#successButton {{
-    background-color: #059669;
-    border-color: #047857;
-    color: #ffffff;
+    background-color: {COLOR_CLEAR};
+    border: 1px solid #1E6B42;
+    color: #FFFFFF;
 }}
 QPushButton#successButton:hover {{
-    background-color: #10b981;
+    background-color: #1E6B42;
 }}
 
-/* Danger Button */
 QPushButton#dangerButton {{
-    background-color: #dc2626;
-    border-color: #b91c1c;
-    color: #ffffff;
+    background-color: {COLOR_BLOCKED};
+    border: 1px solid #A83232;
+    color: #FFFFFF;
 }}
 QPushButton#dangerButton:hover {{
-    background-color: #ef4444;
+    background-color: #A83232;
 }}
 
-/* Warning / Amber Button */
 QPushButton#warningButton {{
-    background-color: #d97706;
-    border-color: #b45309;
-    color: #ffffff;
+    background-color: {COLOR_REVIEW};
+    border: 1px solid #B8851E;
+    color: #FFFFFF;
 }}
 QPushButton#warningButton:hover {{
-    background-color: #f59e0b;
+    background-color: #B8851E;
 }}
 
 /* Navigation Sidebar Buttons */
 QPushButton#navButton {{
     background-color: transparent;
-    color: {COLOR_TEXT_SECONDARY};
+    color: {COLOR_SIDEBAR_TEXT};
     border: none;
     border-radius: 6px;
     text-align: left;
-    padding: 12px 16px;
-    font-size: 14px;
+    padding: 10px 14px;
+    font-size: 13px;
     font-weight: 600;
 }}
 QPushButton#navButton:hover {{
-    background-color: #1e293b;
-    color: {COLOR_TEXT_PRIMARY};
+    background-color: #2A3744;
+    color: #FFFFFF;
 }}
 QPushButton#navButton[active="true"] {{
-    background-color: #1e3a8a;
-    color: #60a5fa;
-    border-left: 4px solid {COLOR_BLUE};
+    background-color: {COLOR_ACCENT};
+    color: #FFFFFF;
+    border-left: 4px solid #34D399;
+    font-weight: 700;
 }}
 
-/* Inputs, Combos & SpinBoxes */
+/* Form Controls */
 QLineEdit, QComboBox, QSpinBox {{
-    background-color: #0f172a;
+    background-color: #FFFFFF;
     color: {COLOR_TEXT_PRIMARY};
     border: 1px solid {COLOR_BORDER};
     border-radius: 6px;
-    padding: 6px 12px;
-    selection-background-color: {COLOR_BLUE};
+    padding: 5px 10px;
+    font-size: 12px;
+    selection-background-color: {COLOR_ACCENT_LIGHT};
+    selection-color: {COLOR_ACCENT};
 }}
 QLineEdit:focus, QComboBox:focus, QSpinBox:focus {{
-    border: 1px solid {COLOR_BLUE};
+    border: 1px solid {COLOR_ACCENT};
 }}
 QComboBox::drop-down {{
     border: none;
     width: 20px;
 }}
 QComboBox QAbstractItemView {{
-    background-color: #1e293b;
+    background-color: #FFFFFF;
     color: {COLOR_TEXT_PRIMARY};
-    selection-background-color: {COLOR_BLUE};
+    selection-background-color: {COLOR_ACCENT_LIGHT};
+    selection-color: {COLOR_ACCENT};
     border: 1px solid {COLOR_BORDER};
     padding: 4px;
 }}
 
-/* Table Views */
+/* Tables */
 QTableWidget, QTableView {{
-    background-color: {COLOR_PANEL_BG};
+    background-color: #FFFFFF;
+    alternate-background-color: #F8FAFC;
     border: 1px solid {COLOR_BORDER};
-    border-radius: 8px;
-    gridline-color: {COLOR_BORDER};
+    border-radius: 6px;
+    gridline-color: #EDF2F7;
     color: {COLOR_TEXT_PRIMARY};
-    selection-background-color: {COLOR_BLUE_BG};
+    selection-background-color: {COLOR_ACCENT_LIGHT};
     selection-color: {COLOR_TEXT_PRIMARY};
+    font-size: 12px;
 }}
 QTableWidget::item {{
-    padding: 6px 10px;
-    border-bottom: 1px solid {COLOR_BORDER};
+    padding: 6px 8px;
+    border-bottom: 1px solid #EDF2F7;
 }}
 QHeaderView::section {{
-    background-color: #0d1424;
-    color: {COLOR_TEXT_MUTED};
+    background-color: #F1F5F9;
+    color: {COLOR_TEXT_SECONDARY};
     font-weight: 700;
     font-size: 11px;
     text-transform: uppercase;
+    letter-spacing: 0.3px;
     padding: 8px 10px;
     border: none;
-    border-bottom: 2px solid {COLOR_BORDER};
+    border-bottom: 1px solid {COLOR_BORDER};
 }}
 
-/* Tabs */
+/* Tab Bar */
 QTabWidget::pane {{
     border: none;
     background-color: transparent;
 }}
 QTabBar::tab {{
-    background-color: #1e293b;
+    background-color: #E2E8F0;
     color: {COLOR_TEXT_SECONDARY};
-    padding: 9px 20px;
+    padding: 8px 18px;
     margin-right: 4px;
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
     font-weight: 600;
+    font-size: 12px;
 }}
 QTabBar::tab:selected {{
-    background-color: {COLOR_BLUE};
-    color: #ffffff;
+    background-color: #FFFFFF;
+    color: {COLOR_ACCENT};
+    border: 1px solid {COLOR_BORDER};
+    border-bottom: none;
 }}
 QTabBar::tab:hover:!selected {{
-    background-color: #334155;
+    background-color: #CBD5E1;
     color: {COLOR_TEXT_PRIMARY};
 }}
 
 /* Dialogs */
 QDialog {{
-    background-color: {COLOR_BG_DARK};
-    border: 1px solid {COLOR_BORDER_LIGHT};
+    background-color: {COLOR_BG};
+    border: 1px solid {COLOR_BORDER};
 }}
 
 /* Sliders */
 QSlider::groove:horizontal {{
     height: 6px;
-    background: {COLOR_BORDER_LIGHT};
+    background: {COLOR_BORDER};
     border-radius: 3px;
 }}
 QSlider::sub-page:horizontal {{
-    background: {COLOR_BLUE};
+    background: {COLOR_ACCENT};
     border-radius: 3px;
 }}
 QSlider::handle:horizontal {{
-    background: #ffffff;
-    border: 1px solid {COLOR_BLUE};
+    background: #FFFFFF;
+    border: 1px solid {COLOR_ACCENT};
     width: 14px;
     margin-top: -4px;
     margin-bottom: -4px;
@@ -287,3 +358,5 @@ QSlider::handle:horizontal {{
 }}
 """
 
+# Alias for backward compatibility
+DARK_THEME_QSS = ENTERPRISE_LIGHT_THEME_QSS

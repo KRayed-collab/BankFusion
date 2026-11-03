@@ -58,19 +58,22 @@ def test_desktop_application_architecture_and_pages():
     from ui.main_window import MainWindow
     from ui.fraud_review_page import FraudReviewPage
     from ui.transaction_feed_page import TransactionFeedPage
+    from ui.auto_blocked_page import AutoBlockedPage
 
     app = QApplication.instance() or QApplication([])
     main_win = MainWindow()
 
-    # Verify exactly TWO main pages in stacked widget
-    assert main_win.stack.count() == 2
+    # Verify THREE main pages in stacked widget
+    assert main_win.stack.count() == 3
     assert isinstance(main_win.stack.widget(0), FraudReviewPage)
     assert isinstance(main_win.stack.widget(1), TransactionFeedPage)
+    assert isinstance(main_win.stack.widget(2), AutoBlockedPage)
 
     # Verify navigation sidebar controls
     assert hasattr(main_win, "sidebar")
     assert hasattr(main_win.sidebar, "btn_queue")
     assert hasattr(main_win.sidebar, "btn_feed")
+    assert hasattr(main_win.sidebar, "btn_blocked")
 
 
 def test_detection_execution_contract_success():

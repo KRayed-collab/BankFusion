@@ -13,10 +13,13 @@ and writes universal transaction-level predictions across all warehouse facts.
 
 import sys
 import time
+import logging
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, Optional, List, Set
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger("BankFusion.DetectionManager")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -27,6 +30,10 @@ from database.database_models import (
     FraudDetectionRun,
     FraudScreeningWarning,
     FraudTransactionPrediction,
+)
+from fraud_detection.enforcement_policy import (
+    get_auto_block_threshold,
+    apply_enforcement_for_detection_run,
 )
 from fraud_detection.detect_transaction_velocity import (
     detect_velocity_bursts,
@@ -150,7 +157,8 @@ def execute_fraud_detection_run(
                 "source_transaction_id": row["source_transaction_id"],
             }
 
-        # 7. Consolidate Warnings into Alert Cards
+        # 7. Consolidate Warnings into Alert Cards (Manual Review Triage: 1-2 rules only)
+        threshold = get_auto_block_threshold()
         raw_warning_list = vel_warnings + dev_warnings + large_warnings + cross_warnings
         alert_objects = []
 
@@ -160,8 +168,6 @@ def execute_fraud_detection_run(
 
         for w in raw_warning_list:
             w_rule = w["rule_name"]
-            a_id = f"ALT-{alert_counter:04d}"
-            alert_counter += 1
 
             linked_ids_str = w.get("linked_transaction_ids", "")
             associated_keys = [int(k) for k in linked_ids_str.split(",") if k.strip().isdigit()]
@@ -180,9 +186,16 @@ def execute_fraud_detection_run(
                     rules_for_entity.append("CROSS_BANK_MOVEMENT")
 
             rule_count = len(rules_for_entity)
-            if "CROSS_BANK_MOVEMENT" in rules_for_entity or rule_count >= 3:
-                priority = "HIGH"
-            elif rule_count == 2:
+
+            # High-confidence multi-factor fraud (>= threshold) is auto-blocked
+            # and routed to the Automatically Blocked page, NOT the manual triage queue.
+            if rule_count >= threshold:
+                continue
+
+            a_id = f"ALT-{alert_counter:04d}"
+            alert_counter += 1
+
+            if rule_count == 2:
                 priority = "MEDIUM"
             else:
                 priority = "REVIEW"
@@ -277,6 +290,7 @@ def execute_fraud_detection_run(
             in_l = 1 if t_key in large_keys else 0
             in_c = 1 if t_key in cross_keys else 0
             is_susp = 1 if (in_v or in_d or in_l or in_c) else 0
+            factor_cnt = in_v + in_d + in_l + in_c
 
             prediction_objects.append(
                 FraudTransactionPrediction(
@@ -288,12 +302,22 @@ def execute_fraud_detection_run(
                     flagged_by_device=in_d,
                     flagged_by_large_amount=in_l,
                     flagged_by_cross_bank_movement=in_c,
+                    triggered_factor_count=factor_cnt,
                     is_predicted_suspicious=is_susp,
                     evaluated_at=now_str,
                 )
             )
 
         session.bulk_save_objects(prediction_objects)
+        session.flush()
+
+        # 11. Three-Tier Fraud Risk Enforcement Policy Application
+        enforcement_counts = apply_enforcement_for_detection_run(
+            session=session,
+            detection_run_id=detection_run_id,
+            predictions=prediction_objects,
+        )
+
         session.commit()
 
         # Verify exact distinct count from database predictions table
@@ -303,12 +327,51 @@ def execute_fraud_detection_run(
             .count()
         )
 
+        # Factor distribution diagnostics
+        f0 = sum(1 for p in prediction_objects if p.triggered_factor_count == 0)
+        f1 = sum(1 for p in prediction_objects if p.triggered_factor_count == 1)
+        f2 = sum(1 for p in prediction_objects if p.triggered_factor_count == 2)
+        f3 = sum(1 for p in prediction_objects if p.triggered_factor_count == 3)
+        f4 = sum(1 for p in prediction_objects if p.triggered_factor_count == 4)
+
+        pipeline_diagnostics = {
+            "detection_run_id": detection_run_id,
+            "simulation_batch_id": batch_id or "ALL",
+            "enforcement_threshold": threshold,
+            "detection_start_time": datetime.fromtimestamp(start_time).isoformat(),
+            "detection_completion_time": datetime.now().isoformat(),
+            "transactions_evaluated": len(df),
+            "transactions_flagged": distinct_flagged_count,
+            "factor_0_count": f0,
+            "factor_1_count": f1,
+            "factor_2_count": f2,
+            "factor_3_count": f3,
+            "factor_4_count": f4,
+            "assigned_clear": enforcement_counts.get("CLEAR", 0),
+            "assigned_review_pending": enforcement_counts.get("REVIEW_PENDING", 0),
+            "assigned_auto_blocked": enforcement_counts.get("AUTO_BLOCKED", 0),
+            "enforcement_persisted": len(prediction_objects),
+            "enforcement_failed": 0,
+        }
+
+        logger.info(
+            f"[PIPELINE_DIAGNOSTICS] Run: {detection_run_id} | Batch: {batch_id or 'ALL'} | "
+            f"Evaluated: {len(df)} | Threshold: {threshold} | "
+            f"Factors: [0: {f0}, 1: {f1}, 2: {f2}, 3: {f3}, 4: {f4}] | "
+            f"Enforcement: [CLEAR: {pipeline_diagnostics['assigned_clear']}, "
+            f"REVIEW_PENDING: {pipeline_diagnostics['assigned_review_pending']}, "
+            f"AUTO_BLOCKED: {pipeline_diagnostics['assigned_auto_blocked']}] | "
+            f"Persisted: {pipeline_diagnostics['enforcement_persisted']} (Failed: 0)"
+        )
+
         return {
             "success": True,
             "detection_run_id": detection_run_id,
             "total_transactions_evaluated": len(df),
             "total_flagged_transactions": distinct_flagged_count,
             "total_warnings_generated": len(alert_objects),
+            "enforcement_counts": enforcement_counts,
+            "pipeline_diagnostics": pipeline_diagnostics,
             "execution_duration_sec": duration_sec,
             "error_message": None,
             # Backward-compatible fields

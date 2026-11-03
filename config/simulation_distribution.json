@@ -1,0 +1,10 @@
+{
+  "target_percentages": {
+    "CLEAR": 80.0,
+    "REVIEW_PENDING": 15.0,
+    "AUTO_BLOCKED": 5.0
+  },
+  "default_random_seed": 42,
+  "description": "Configurable target distribution for synthetic transaction scenario generation: 80% CLEAR, 15% REVIEW_PENDING, 5% AUTO_BLOCKED"
+}
+

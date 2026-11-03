@@ -24,5 +24,16 @@
     "min_distinct_accounts": 3,
     "min_distinct_banks": 2,
     "description": "Rapid multi-hop cross-bank transfer chain retaining >= 80% of funds across distinct accounts and banks within 10 minutes"
+  },
+  "enforcement_policy": {
+    "auto_block_rule_count": 3,
+    "description": "Deterministic 3-tier risk response: 0 rules = CLEAR, 1-2 rules = REVIEW_PENDING, >= 3 rules = AUTO_BLOCKED"
+  },
+  "simulation_distribution": {
+    "clear_target_pct": 80.0,
+    "review_pending_target_pct": 15.0,
+    "auto_blocked_target_pct": 5.0,
+    "default_random_seed": 42,
+    "description": "Configurable target distribution for synthetic transaction simulation: 80% Clear, 15% Review Pending, 5% Auto Blocked"
   }
 }

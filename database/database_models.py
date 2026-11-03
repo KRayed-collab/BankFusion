@@ -398,6 +398,7 @@ class FraudTransactionPrediction(Base):
     flagged_by_device = Column(Integer, nullable=False, default=0)
     flagged_by_large_amount = Column(Integer, nullable=False, default=0)
     flagged_by_cross_bank_movement = Column(Integer, nullable=False, default=0)
+    triggered_factor_count = Column(Integer, nullable=False, default=0)
     is_predicted_suspicious = Column(Integer, nullable=False, default=0)
     evaluated_at = Column(String, nullable=False)
 
@@ -411,7 +412,67 @@ class FraudTransactionPrediction(Base):
 
 
 # ============================================================================
-# 5. SEPARATE EVALUATION GROUND TRUTH (LOGICAL ISOLATION)
+# 5. THREE-TIER FRAUD RISK ENFORCEMENT & AUDIT HISTORY
+# ============================================================================
+
+class TransactionEnforcementRecord(Base):
+    """
+    Transaction-level enforcement decision and operational handling state.
+    Logically decoupled from fraud prediction:
+    - Prediction determines if a transaction exhibits risk indicators.
+    - Enforcement determines the policy action: CLEAR, REVIEW_PENDING, AUTO_BLOCKED, MANUALLY_BLOCKED, RELEASED.
+    """
+    __tablename__ = "transaction_enforcement_record"
+
+    enforcement_id = Column(Integer, primary_key=True, autoincrement=True)
+    transaction_key = Column(Integer, ForeignKey("warehouse_fact_transaction.transaction_key"), nullable=False, index=True)
+    source_bank_code = Column(String, nullable=False)
+    source_transaction_id = Column(String, nullable=False, index=True)
+    detection_run_id = Column(String, ForeignKey("fraud_detection_run.detection_run_id"), nullable=False, index=True)
+
+    enforcement_status = Column(String, nullable=False, default="CLEAR") # 'CLEAR', 'REVIEW_PENDING', 'AUTO_BLOCKED', 'MANUALLY_BLOCKED', 'RELEASED'
+    risk_tier = Column(String, nullable=False, default="CLEAR")          # 'CLEAR', 'LOW', 'MEDIUM', 'HIGH'
+    triggered_factor_count = Column(Integer, nullable=False, default=0)
+    triggered_factors_summary = Column(String, nullable=False, default="None")
+    blocking_reason = Column(String, nullable=True)
+
+    # Lifecycle & operator management
+    is_active_block = Column(Integer, nullable=False, default=0) # 1 if currently active block, 0 if released or clear
+    created_at = Column(String, nullable=False)
+    blocked_at = Column(String, nullable=True)
+    released_at = Column(String, nullable=True)
+    released_by = Column(String, nullable=True)
+    release_reason = Column(String, nullable=True)
+
+    run = relationship("FraudDetectionRun")
+    transaction = relationship("FactTransaction")
+
+    __table_args__ = (
+        UniqueConstraint("detection_run_id", "transaction_key", name="uq_run_txn_enforcement"),
+        Index("idx_enf_status_active", "enforcement_status", "is_active_block"),
+    )
+
+
+class EnforcementAuditLog(Base):
+    """
+    Immutable audit trail for all enforcement transitions, operator overrides, and releases.
+    """
+    __tablename__ = "enforcement_audit_log"
+
+    log_id = Column(Integer, primary_key=True, autoincrement=True)
+    transaction_key = Column(Integer, ForeignKey("warehouse_fact_transaction.transaction_key"), nullable=False, index=True)
+    source_transaction_id = Column(String, nullable=False)
+    detection_run_id = Column(String, nullable=True)
+    previous_status = Column(String, nullable=False)
+    new_status = Column(String, nullable=False)
+    action_type = Column(String, nullable=False) # 'INITIAL_EVALUATION', 'OPERATOR_REVIEW_LEGITIMATE', 'OPERATOR_CONFIRM_SUSPICIOUS', 'OPERATOR_ESCALATE', 'OPERATOR_RELEASE'
+    operator_id = Column(String, nullable=False, default="SYSTEM")
+    action_reason = Column(String, nullable=True)
+    timestamp = Column(String, nullable=False)
+
+
+# ============================================================================
+# 6. SEPARATE EVALUATION GROUND TRUTH (LOGICAL ISOLATION)
 # ============================================================================
 
 class EvaluationGroundTruth(Base):

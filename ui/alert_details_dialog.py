@@ -3,16 +3,25 @@ BankFusion Dialog: Alert Evidence & Audit Trail
 ===============================================
 Native Qt QDialog presenting full investigator evidence, interbank routing,
 and case action controls for a selected fraud alert.
+Features:
+- Enterprise light styling
+- One-click copy buttons for Alert ID and Account References
+- Transaction-specific actions: Mark Legitimate, Confirm Suspicious, Escalate Case
+  (Simulated account restriction removed per system architecture)
 """
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QLabel, QPushButton, QFrame, QTextEdit, QMessageBox
+    QLabel, QPushButton, QFrame, QTextEdit, QMessageBox, QApplication
 )
 from PySide6.QtCore import Qt, Signal
 from ui.theme import (
-    COLOR_PANEL_BG, COLOR_BORDER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
-    COLOR_TEXT_MUTED, COLOR_BLUE, COLOR_RED, COLOR_AMBER, COLOR_GREEN
+    COLOR_CARD_BG, COLOR_BORDER, COLOR_BORDER_DARK, COLOR_TEXT_PRIMARY,
+    COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED, COLOR_ACCENT,
+    COLOR_CLEAR, COLOR_CLEAR_BG, COLOR_CLEAR_BORDER,
+    COLOR_REVIEW, COLOR_REVIEW_BG, COLOR_REVIEW_BORDER,
+    COLOR_BLOCKED, COLOR_BLOCKED_BG, COLOR_BLOCKED_BORDER,
+    COLOR_RELEASED, COLOR_RELEASED_BG, COLOR_RELEASED_BORDER
 )
 
 
@@ -26,46 +35,60 @@ class AlertDetailsDialog(QDialog):
         super().__init__(parent)
         self.alert_data = alert_data
         self.setWindowTitle(f"Alert Investigation — {alert_data.get('alert_id', 'ALT')}")
-        self.resize(750, 620)
+        self.resize(760, 640)
         self.setModal(True)
 
         self._build_ui()
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(16)
-        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(14)
+        layout.setContentsMargins(24, 20, 24, 20)
 
-        # Header: Alert ID, Priority, Status
+        # Header: Alert ID, Priority, Status, Copy
         hdr_layout = QHBoxLayout()
-        title_label = QLabel(f"Investigation File: {self.alert_data.get('alert_id', 'ALT')}")
-        title_label.setStyleSheet("font-size: 20px; font-weight: 800; color: #f8fafc;")
+        alert_id = str(self.alert_data.get('alert_id', 'ALT'))
+        title_label = QLabel(f"Alert File: {alert_id}")
+        title_label.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {COLOR_TEXT_PRIMARY};")
 
-        prio = self.alert_data.get("review_priority", "MEDIUM")
-        prio_color = COLOR_RED if prio == "HIGH" else (COLOR_AMBER if prio == "MEDIUM" else COLOR_BLUE)
+        btn_copy_id = QPushButton("📋 Copy ID")
+        btn_copy_id.setObjectName("secondaryButton")
+        btn_copy_id.setStyleSheet("font-size: 11px; padding: 3px 8px;")
+        btn_copy_id.clicked.connect(lambda: self._copy_to_clipboard(alert_id))
+
+        prio = (self.alert_data.get("review_priority") or "MEDIUM").upper()
+        if prio == "HIGH":
+            prio_bg, prio_fg, prio_bd = COLOR_BLOCKED_BG, COLOR_BLOCKED, COLOR_BLOCKED_BORDER
+        elif prio == "MEDIUM":
+            prio_bg, prio_fg, prio_bd = COLOR_REVIEW_BG, COLOR_REVIEW, COLOR_REVIEW_BORDER
+        else:
+            prio_bg, prio_fg, prio_bd = COLOR_RELEASED_BG, COLOR_RELEASED, COLOR_RELEASED_BORDER
+
         prio_badge = QLabel(f" {prio} PRIORITY ")
         prio_badge.setStyleSheet(f"""
-            background-color: {prio_color};
-            color: #ffffff;
+            background-color: {prio_bg};
+            color: {prio_fg};
             font-weight: 700;
             font-size: 11px;
-            padding: 4px 10px;
+            padding: 3px 8px;
             border-radius: 4px;
+            border: 1px solid {prio_bd};
         """)
 
-        status_str = self.alert_data.get("review_status", "NEEDS_REVIEW").replace("_", " ")
+        status_str = (self.alert_data.get("review_status") or "NEEDS_REVIEW").replace("_", " ")
         status_badge = QLabel(f" {status_str} ")
-        status_badge.setStyleSheet("""
-            background-color: #1e293b;
-            color: #94a3b8;
+        status_badge.setStyleSheet(f"""
+            background-color: #F1F5F9;
+            color: {COLOR_TEXT_SECONDARY};
             font-weight: 700;
             font-size: 11px;
-            padding: 4px 10px;
+            padding: 3px 8px;
             border-radius: 4px;
-            border: 1px solid #334155;
+            border: 1px solid {COLOR_BORDER};
         """)
 
         hdr_layout.addWidget(title_label)
+        hdr_layout.addWidget(btn_copy_id)
         hdr_layout.addStretch()
         hdr_layout.addWidget(prio_badge)
         hdr_layout.addWidget(status_badge)
@@ -74,13 +97,13 @@ class AlertDetailsDialog(QDialog):
         # Metadata Grid Frame
         grid_frame = QFrame()
         grid_frame.setStyleSheet(f"""
-            background-color: {COLOR_PANEL_BG};
+            background-color: #FFFFFF;
             border: 1px solid {COLOR_BORDER};
-            border-radius: 8px;
-            padding: 14px;
+            border-radius: 6px;
+            padding: 12px;
         """)
         grid = QGridLayout(grid_frame)
-        grid.setSpacing(12)
+        grid.setSpacing(10)
 
         amt_paise = self.alert_data.get("amount_paise") or 0
         amt_inr = f"₹{amt_paise / 100:,.2f}" if amt_paise else "N/A"
@@ -93,8 +116,8 @@ class AlertDetailsDialog(QDialog):
             ("Monetary Amount:", f"{amt_inr} ({amt_paise:,} paise)"),
             ("Payment Method:", f"{self.alert_data.get('payment_method') or 'N/A'} • {self.alert_data.get('transaction_status') or 'SETTLED'}"),
             ("Device Token:", self.alert_data.get("device_token") or "UNKNOWN_DEVICE"),
-            ("Detection Run ID:", self.alert_data.get("detection_run_id") or "N/A"),
-            ("Trigger Timestamp:", self.alert_data.get("trigger_timestamp") or "N/A"),
+            ("Detection Run ID:", str(self.alert_data.get("detection_run_id") or "N/A")),
+            ("Trigger Timestamp:", str(self.alert_data.get("trigger_timestamp") or "N/A")),
             ("Window Interval:", f"{self.alert_data.get('window_start') or 'N/A'} → {self.alert_data.get('window_end') or 'N/A'}"),
             ("Threshold Value:", str(self.alert_data.get("threshold_value", "N/A"))),
             ("Observed Metric:", str(self.alert_data.get("observed_value", "N/A"))),
@@ -103,7 +126,7 @@ class AlertDetailsDialog(QDialog):
         row, col = 0, 0
         for label, val in items:
             lbl_widget = QLabel(label)
-            lbl_widget.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-weight: 600; font-size: 11px;")
+            lbl_widget.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; font-weight: 600; font-size: 11px;")
             val_widget = QLabel(str(val))
             val_widget.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; font-weight: 700; font-size: 12px;")
             val_widget.setTextInteractionFlags(Qt.TextSelectableByMouse)
@@ -118,8 +141,8 @@ class AlertDetailsDialog(QDialog):
         layout.addWidget(grid_frame)
 
         # Evidence Box
-        ev_title = QLabel("DETECTION EVIDENCE & REASONING")
-        ev_title.setStyleSheet("font-size: 11px; font-weight: 700; color: #94a3b8;")
+        ev_title = QLabel("DETECTION EVIDENCE & AUDIT REASONING")
+        ev_title.setStyleSheet(f"font-size: 11px; font-weight: 700; color: {COLOR_TEXT_SECONDARY}; letter-spacing: 0.5px;")
         layout.addWidget(ev_title)
 
         ev_box = QTextEdit()
@@ -138,39 +161,35 @@ class AlertDetailsDialog(QDialog):
 
         ev_box.setPlainText(summary_text)
         ev_box.setStyleSheet(f"""
-            background-color: #0d1424;
-            color: #e2e8f0;
+            background-color: #FFFFFF;
+            color: {COLOR_TEXT_PRIMARY};
             border: 1px solid {COLOR_BORDER};
             border-radius: 6px;
             padding: 10px;
             font-family: 'Consolas', 'Courier New', monospace;
-            font-size: 12px;
+            font-size: 11px;
         """)
         layout.addWidget(ev_box)
 
         # Investigator Actions Section
-        action_title = QLabel("INVESTIGATOR TRIAGE ACTIONS")
-        action_title.setStyleSheet("font-size: 11px; font-weight: 700; color: #94a3b8;")
+        action_title = QLabel("TRANSACTION INVESTIGATION TRIAGE")
+        action_title.setStyleSheet(f"font-size: 11px; font-weight: 700; color: {COLOR_TEXT_SECONDARY}; letter-spacing: 0.5px;")
         layout.addWidget(action_title)
 
         btn_layout = QHBoxLayout()
         btn_layout.setSpacing(10)
 
-        self.btn_legit = QPushButton("✅ Mark as Legitimate")
+        self.btn_legit = QPushButton("✓ Mark Legitimate")
         self.btn_legit.setObjectName("successButton")
-        self.btn_legit.clicked.connect(lambda: self._on_action("LEGITIMATE", "Verified by investigator as benign traffic."))
+        self.btn_legit.clicked.connect(lambda: self._on_action("LEGITIMATE", "Verified by compliance investigator as benign traffic."))
 
-        self.btn_susp = QPushButton("🚨 Confirm as Suspicious")
+        self.btn_susp = QPushButton("⚠ Confirm Suspicious")
         self.btn_susp.setObjectName("dangerButton")
-        self.btn_susp.clicked.connect(lambda: self._on_action("SUSPICIOUS", "Confirmed suspicious by triage officer."))
+        self.btn_susp.clicked.connect(lambda: self._on_action("SUSPICIOUS", "Confirmed suspicious by triage officer; hold applied."))
 
-        self.btn_escalate = QPushButton("⚠️ Escalate Case")
-        self.btn_escalate.setObjectName("warningButton")
+        self.btn_escalate = QPushButton("⤴ Escalate Case")
+        self.btn_escalate.setObjectName("secondaryButton")
         self.btn_escalate.clicked.connect(lambda: self._on_action("ESCALATED", "Escalated for senior compliance review."))
-
-        self.btn_restrict = QPushButton("🔒 Restrict Account")
-        self.btn_restrict.setStyleSheet("background-color: #831843; color: #ffffff; font-weight: 700;")
-        self.btn_restrict.clicked.connect(lambda: self._on_action("ACCOUNT_RESTRICTED", "Simulated restriction placed."))
 
         self.btn_close = QPushButton("Close")
         self.btn_close.clicked.connect(self.reject)
@@ -178,11 +197,15 @@ class AlertDetailsDialog(QDialog):
         btn_layout.addWidget(self.btn_legit)
         btn_layout.addWidget(self.btn_susp)
         btn_layout.addWidget(self.btn_escalate)
-        btn_layout.addWidget(self.btn_restrict)
         btn_layout.addStretch()
         btn_layout.addWidget(self.btn_close)
 
         layout.addLayout(btn_layout)
+
+    def _copy_to_clipboard(self, text: str):
+        clipboard = QApplication.clipboard()
+        if clipboard:
+            clipboard.setText(text)
 
     def _on_action(self, status: str, notes: str):
         target_id = self.alert_data.get("alert_id") or str(self.alert_data.get("warning_id", ""))
@@ -196,4 +219,3 @@ class AlertDetailsDialog(QDialog):
             f"Alert {target_id} updated to status: {status}\n(Persisted to SQLite)"
         )
         self.accept()
-

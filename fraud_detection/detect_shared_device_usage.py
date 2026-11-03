@@ -85,6 +85,7 @@ def detect_shared_device_abuse(
             continue
 
         n = len(sorted_group)
+        warned = False
         # Slide rolling window [t_i - window_seconds, t_i]
         for i in range(n):
             current_epoch = sorted_group.loc[i, "epoch_timestamp"]
@@ -101,28 +102,28 @@ def detect_shared_device_abuse(
                 window_keys = set(window_slice["transaction_key"])
                 flagged_keys.update(window_keys)
 
-                trigger_txn = window_slice.iloc[-1]
-                acc_list = sorted_group["source_account_ref"].unique().tolist()
-                evidence = (
-                    f"Device {dev_token} utilized by {distinct_accs} distinct sending accounts "
-                    f"({', '.join(acc_list[:4])}) within rolling 24 hours "
-                    f"(Threshold: >={min_distinct_accounts} distinct accounts in {window_seconds // 3600}h)."
-                )
+                if not warned:
+                    trigger_txn = window_slice.iloc[-1]
+                    acc_list = sorted_group["source_account_ref"].unique().tolist()
+                    evidence = (
+                        f"Device {dev_token} utilized by {distinct_accs} distinct sending accounts "
+                        f"({', '.join(acc_list[:4])}) within rolling 24 hours "
+                        f"(Threshold: >={min_distinct_accounts} distinct accounts in {window_seconds // 3600}h)."
+                    )
 
-                warnings.append({
-                    "rule_name": "SHARED_DEVICE",
-                    "review_priority": "REVIEW_RECOMMENDED",
-                    "entity_type": "DEVICE",
-                    "entity_ref": str(dev_token),
-                    "trigger_timestamp": trigger_txn["transaction_timestamp"],
-                    "window_start": window_slice.iloc[0]["transaction_timestamp"],
-                    "window_end": trigger_txn["transaction_timestamp"],
-                    "threshold_value": min_distinct_accounts,
-                    "observed_value": distinct_accs,
-                    "evidence_summary": evidence,
-                })
-                # Break to next device to prevent duplicate warnings for the same device window
-                break
+                    warnings.append({
+                        "rule_name": "SHARED_DEVICE",
+                        "review_priority": "REVIEW_RECOMMENDED",
+                        "entity_type": "DEVICE",
+                        "entity_ref": str(dev_token),
+                        "trigger_timestamp": trigger_txn["transaction_timestamp"],
+                        "window_start": window_slice.iloc[0]["transaction_timestamp"],
+                        "window_end": trigger_txn["transaction_timestamp"],
+                        "threshold_value": min_distinct_accounts,
+                        "observed_value": distinct_accs,
+                        "evidence_summary": evidence,
+                    })
+                    warned = True
 
     return warnings, flagged_keys
 

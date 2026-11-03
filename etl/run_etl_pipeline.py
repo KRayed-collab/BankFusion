@@ -54,7 +54,7 @@ def execute_full_etl_pipeline(
     Returns reconciliation summary dictionary.
     """
     if not batch_id:
-        timestamp_slug = datetime.now().strftime("%Y%m%d-%H%M%S")
+        timestamp_slug = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
         batch_id = f"BATCH-{timestamp_slug}"
 
     start_time = time.time()

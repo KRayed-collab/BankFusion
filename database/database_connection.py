@@ -46,6 +46,14 @@ else:
 # Format as POSIX path to avoid backslash escaping issues in SQLite URL
 DEFAULT_DB_URL = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_DB_PATH.as_posix()}")
 
+def get_active_sqlite_db_path() -> Path:
+    """Returns the resolved absolute filesystem path of the active SQLite database."""
+    url = os.getenv("DATABASE_URL", f"sqlite:///{DEFAULT_DB_PATH.as_posix()}")
+    if url.startswith("sqlite:///"):
+        raw_path = url[len("sqlite:///"):]
+        return Path(raw_path).resolve()
+    return DEFAULT_DB_PATH.resolve()
+
 # SQLAlchemy Declarative Base
 Base = declarative_base()
 

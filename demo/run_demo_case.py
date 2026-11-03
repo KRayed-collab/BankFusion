@@ -42,6 +42,8 @@ from database.database_models import (
     FraudScreeningWarning,
     FraudTransactionPrediction,
     EvaluationGroundTruth,
+    TransactionEnforcementRecord,
+    EnforcementAuditLog,
 )
 from demo.demo_data import get_demo_source_records
 from etl.extract_bank_data import extract_raw_bank_data
@@ -63,7 +65,17 @@ def reset_demo_records(session: Session, demo_batch_id: str = "BATCH-DEMO-001", 
         "B-EVT-DEMO-001", "B-EVT-DEMO-002", "C-J-DEMO-01", "C-J-DEMO-ERR"
     ]
 
-    # 1. First delete child table records referencing FactTransaction (FraudTransactionPrediction)
+    # 1. First delete child table records referencing FactTransaction and FraudDetectionRun
+    session.query(EnforcementAuditLog).filter(
+        (EnforcementAuditLog.detection_run_id == demo_run_id) |
+        (EnforcementAuditLog.source_transaction_id.in_(demo_txns))
+    ).delete(synchronize_session=False)
+
+    session.query(TransactionEnforcementRecord).filter(
+        (TransactionEnforcementRecord.detection_run_id == demo_run_id) |
+        (TransactionEnforcementRecord.source_transaction_id.in_(demo_txns))
+    ).delete(synchronize_session=False)
+
     session.query(FraudTransactionPrediction).filter(
         (FraudTransactionPrediction.detection_run_id == demo_run_id) |
         (FraudTransactionPrediction.source_transaction_id.in_(demo_txns))

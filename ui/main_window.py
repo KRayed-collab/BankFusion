@@ -15,7 +15,8 @@ from PySide6.QtCore import Qt
 from ui.navigation_sidebar import NavigationSidebar
 from ui.fraud_review_page import FraudReviewPage
 from ui.transaction_feed_page import TransactionFeedPage
-from ui.theme import DARK_THEME_QSS
+from ui.auto_blocked_page import AutoBlockedPage
+from ui.theme import ENTERPRISE_LIGHT_THEME_QSS
 
 
 class MainWindow(QMainWindow):
@@ -23,12 +24,12 @@ class MainWindow(QMainWindow):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("BankFusion — Multi-Bank Fraud Analytics Platform (Desktop Edition)")
-        self.resize(1300, 840)
+        self.setWindowTitle("BankFusion — Enterprise Fraud & Risk Operations")
+        self.resize(1366, 768)
         self.setMinimumSize(1080, 680)
 
-        # Apply dark theme styling
-        self.setStyleSheet(DARK_THEME_QSS)
+        # Apply professional enterprise light theme styling
+        self.setStyleSheet(ENTERPRISE_LIGHT_THEME_QSS)
 
         self._build_main_ui()
 
@@ -55,10 +56,19 @@ class MainWindow(QMainWindow):
         self.page_feed = TransactionFeedPage(self)
         self.stack.addWidget(self.page_feed)
 
+        # Page 2: Automatically Blocked Transactions
+        self.page_blocked = AutoBlockedPage(self)
+        self.stack.addWidget(self.page_blocked)
+
         main_layout.addWidget(self.stack)
 
         # Connect inter-page refresh triggers
         self.page_queue.screening_completed.connect(self.page_feed.mark_dirty)
+        self.page_queue.screening_completed.connect(self.page_blocked.refresh_data)
+        self.page_feed.screening_completed.connect(self.page_blocked.refresh_data)
+        self.page_feed.screening_completed.connect(self.page_queue.refresh_queue)
+        self.page_blocked.block_released.connect(self.page_feed.mark_dirty)
+        self.page_blocked.block_released.connect(self.page_queue.refresh_queue)
 
         # Connect navigation signal
         self.sidebar.page_selected.connect(self._on_navigate)
@@ -70,6 +80,8 @@ class MainWindow(QMainWindow):
             self.page_queue.refresh_queue()
         elif page_index == 1:
             self.page_feed.load_feed_data()
+        elif page_index == 2:
+            self.page_blocked.refresh_data()
 
     def closeEvent(self, event):
         """Cleanly halts background timers and workers upon window exit."""

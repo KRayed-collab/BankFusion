@@ -3,16 +3,23 @@ BankFusion Dialog: Transaction Detail Inspector
 ===============================================
 Native Qt QDialog presenting dimensional star-schema context,
 integer-paise verification, and deterministic rule breakdowns for a transaction.
+Features:
+- Enterprise light styling
+- One-click copy buttons for Transaction ID and Account References
+- Full 4-factor deterministic rule inspection with actual triggered state
+- Preserved status colors and clear typography
 """
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QGridLayout,
-    QLabel, QPushButton, QFrame, QTextEdit
+    QLabel, QPushButton, QFrame, QApplication
 )
 from PySide6.QtCore import Qt
 from ui.theme import (
-    COLOR_PANEL_BG, COLOR_BORDER, COLOR_TEXT_PRIMARY, COLOR_TEXT_SECONDARY,
-    COLOR_TEXT_MUTED, COLOR_BLUE, COLOR_RED, COLOR_GREEN
+    COLOR_CARD_BG, COLOR_BORDER, COLOR_BORDER_DARK, COLOR_TEXT_PRIMARY,
+    COLOR_TEXT_SECONDARY, COLOR_TEXT_MUTED, COLOR_ACCENT,
+    COLOR_CLEAR, COLOR_CLEAR_BG, COLOR_CLEAR_BORDER,
+    COLOR_BLOCKED, COLOR_BLOCKED_BG, COLOR_BLOCKED_BORDER
 )
 
 
@@ -23,25 +30,33 @@ class TransactionDetailsDialog(QDialog):
         super().__init__(parent)
         self.txn = txn_row
         self.setWindowTitle(f"Transaction Record — {self.txn.get('source_transaction_id', 'TXN')}")
-        self.resize(720, 560)
+        self.resize(740, 580)
         self.setModal(True)
 
         self._build_ui()
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        layout.setSpacing(16)
-        layout.setContentsMargins(24, 24, 24, 24)
+        layout.setSpacing(14)
+        layout.setContentsMargins(24, 20, 24, 20)
 
         # Header: ID and Screening Badge
         hdr = QHBoxLayout()
-        title = QLabel(f"Fact Transaction: {self.txn.get('source_transaction_id', 'TXN')}")
-        title.setStyleSheet("font-size: 18px; font-weight: 800; color: #f8fafc;")
+        txn_id = str(self.txn.get('source_transaction_id', 'TXN'))
+        title = QLabel(f"Transaction: {txn_id}")
+        title.setStyleSheet(f"font-size: 18px; font-weight: 800; color: {COLOR_TEXT_PRIMARY};")
 
         is_susp = self.txn.get("is_predicted_suspicious", 0) == 1
-        badge_text = "🚨 SUSPICIOUS" if is_susp else "✅ CLEAN / CLEARED"
-        badge_bg = "#7f1d1d" if is_susp else "#064e3b"
-        badge_fg = "#fca5a5" if is_susp else "#6ee7b7"
+        if is_susp:
+            badge_text = "SUSPICIOUS / FLAGGED"
+            badge_bg = COLOR_BLOCKED_BG
+            badge_fg = COLOR_BLOCKED
+            badge_bd = COLOR_BLOCKED_BORDER
+        else:
+            badge_text = "CLEARED / BENIGN"
+            badge_bg = COLOR_CLEAR_BG
+            badge_fg = COLOR_CLEAR
+            badge_bd = COLOR_CLEAR_BORDER
 
         badge = QLabel(f" {badge_text} ")
         badge.setStyleSheet(f"""
@@ -51,9 +66,16 @@ class TransactionDetailsDialog(QDialog):
             font-size: 11px;
             padding: 4px 10px;
             border-radius: 4px;
+            border: 1px solid {badge_bd};
         """)
 
+        btn_copy_id = QPushButton("📋 Copy ID")
+        btn_copy_id.setObjectName("secondaryButton")
+        btn_copy_id.setStyleSheet("font-size: 11px; padding: 4px 8px;")
+        btn_copy_id.clicked.connect(lambda: self._copy_to_clipboard(txn_id))
+
         hdr.addWidget(title)
+        hdr.addWidget(btn_copy_id)
         hdr.addStretch()
         hdr.addWidget(badge)
         layout.addLayout(hdr)
@@ -61,13 +83,13 @@ class TransactionDetailsDialog(QDialog):
         # Dimensional Context Frame
         grid_frame = QFrame()
         grid_frame.setStyleSheet(f"""
-            background-color: {COLOR_PANEL_BG};
+            background-color: #FFFFFF;
             border: 1px solid {COLOR_BORDER};
-            border-radius: 8px;
-            padding: 14px;
+            border-radius: 6px;
+            padding: 12px;
         """)
         grid = QGridLayout(grid_frame)
-        grid.setSpacing(12)
+        grid.setSpacing(10)
 
         amt_paise = self.txn.get("amount_paise", 0)
         amt_inr = self.txn.get("amount_inr", amt_paise / 100.0)
@@ -90,7 +112,7 @@ class TransactionDetailsDialog(QDialog):
         row, col = 0, 0
         for label, val in meta_items:
             l_w = QLabel(label)
-            l_w.setStyleSheet(f"color: {COLOR_TEXT_MUTED}; font-weight: 600; font-size: 11px;")
+            l_w.setStyleSheet(f"color: {COLOR_TEXT_SECONDARY}; font-weight: 600; font-size: 11px;")
             v_w = QLabel(str(val))
             v_w.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; font-weight: 700; font-size: 12px;")
             v_w.setTextInteractionFlags(Qt.TextSelectableByMouse)
@@ -106,12 +128,12 @@ class TransactionDetailsDialog(QDialog):
 
         # 4-Factor Deterministic Rule Breakdown
         sec_title = QLabel("4-FACTOR DETERMINISTIC RULE BREAKDOWN")
-        sec_title.setStyleSheet("font-size: 11px; font-weight: 700; color: #94a3b8;")
+        sec_title.setStyleSheet(f"font-size: 11px; font-weight: 700; color: {COLOR_TEXT_SECONDARY}; letter-spacing: 0.5px;")
         layout.addWidget(sec_title)
 
         rule_frame = QFrame()
         rule_frame.setStyleSheet(f"""
-            background-color: #0d1424;
+            background-color: #FFFFFF;
             border: 1px solid {COLOR_BORDER};
             border-radius: 6px;
             padding: 12px;
@@ -134,12 +156,23 @@ class TransactionDetailsDialog(QDialog):
         for rule_name, is_flagged in rules:
             r_row = QHBoxLayout()
             r_lbl = QLabel(rule_name)
-            r_lbl.setStyleSheet("color: #cbd5e1; font-size: 12px;")
+            r_lbl.setStyleSheet(f"color: {COLOR_TEXT_PRIMARY}; font-size: 12px;")
 
-            res_text = "🚨 FLAGGED" if is_flagged else "✅ Clear"
-            res_color = COLOR_RED if is_flagged else COLOR_GREEN
-            res_lbl = QLabel(res_text)
-            res_lbl.setStyleSheet(f"color: {res_color}; font-weight: 700; font-size: 12px;")
+            res_text = "FLAGGED" if is_flagged else "Clear"
+            res_color = COLOR_BLOCKED if is_flagged else COLOR_CLEAR
+            res_bg = COLOR_BLOCKED_BG if is_flagged else COLOR_CLEAR_BG
+            res_bd = COLOR_BLOCKED_BORDER if is_flagged else COLOR_CLEAR_BORDER
+
+            res_lbl = QLabel(f" {res_text} ")
+            res_lbl.setStyleSheet(f"""
+                color: {res_color};
+                background-color: {res_bg};
+                border: 1px solid {res_bd};
+                border-radius: 3px;
+                font-weight: 700;
+                font-size: 11px;
+                padding: 2px 6px;
+            """)
 
             r_row.addWidget(r_lbl)
             r_row.addStretch()
@@ -152,7 +185,12 @@ class TransactionDetailsDialog(QDialog):
         btn_box = QHBoxLayout()
         btn_box.addStretch()
         btn_close = QPushButton("Close")
+        btn_close.setObjectName("primaryButton")
         btn_close.clicked.connect(self.accept)
         btn_box.addWidget(btn_close)
         layout.addLayout(btn_box)
 
+    def _copy_to_clipboard(self, text: str):
+        clipboard = QApplication.clipboard()
+        if clipboard:
+            clipboard.setText(text)
